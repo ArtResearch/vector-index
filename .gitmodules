@@ -1,3 +1,6 @@
 [submodule "third_party/lazycsv"]
 	path = third_party/lazycsv
 	url = https://github.com/aindlq/lazycsv.git
+[submodule "third_party/libnpy"]
+	path = third_party/libnpy
+	url = https://github.com/llohse/libnpy.git
