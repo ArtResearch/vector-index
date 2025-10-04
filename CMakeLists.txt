@@ -6,39 +6,15 @@ if(POLICY CMP0167)
 endif()
 
 set(CMAKE_CXX_STANDARD 23)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -O3")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -O3")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native -mavx2 -mavx512f -mavx512bw")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=native -mavx2 -mavx512f -mavx512bw")
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 include(FetchContent)
 find_package(Boost REQUIRED COMPONENTS program_options system url)
 find_package(OpenMP REQUIRED)
-find_package(OpenSSL REQUIRED)
 find_package(CURL REQUIRED)
-
-# Build OpenCV from third_party
-set(BUILD_LIST "core,features,flann,imgproc,imgcodecs,calib" CACHE STRING "")
-set(BUILD_opencv_apps OFF CACHE BOOL "")
-set(BUILD_EXAMPLES OFF CACHE BOOL "")
-set(BUILD_TESTS OFF CACHE BOOL "")
-set(BUILD_PERF_TESTS OFF CACHE BOOL "")
-set(BUILD_DOCS OFF CACHE BOOL "")
-set(BUILD_PACKAGE OFF CACHE BOOL "")
-set(CPU_DISPATCH "SSE4_1,SSE4_2,AVX,FP16,AVX2,AVX512_SKX" CACHE STRING "")
-set(WITH_IPP OFF CACHE BOOL "")
-add_subdirectory(third_party/opencv)
-
-add_library(OpenCV::core ALIAS opencv_core)
-add_library(OpenCV::features ALIAS opencv_features)
-add_library(OpenCV::flann ALIAS opencv_flann)
-add_library(OpenCV::imgproc ALIAS opencv_imgproc)
-add_library(OpenCV::imgcodecs ALIAS opencv_imgcodecs)
-add_library(OpenCV::calib ALIAS opencv_calib)
-
-# Set march=native and AVX flags for the rest of the project and its dependencies (except OpenCV).
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native -mavx2 -mavx512f -mavx512bw")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=native -mavx2 -mavx512f -mavx512bw")
-
+find_package(OpenCV REQUIRED COMPONENTS core features2d flann imgproc imgcodecs calib3d)
 
 add_executable(CreateWorkData src/CreateWorkData.cpp)
 
@@ -60,6 +36,8 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(usearch)
 
+# Suppress narrowing conversion warnings specifically for the usearch library
+target_compile_options(usearch INTERFACE -Wno-narrowing)
 
 target_include_directories(createUSearchIndex PUBLIC
     third_party/libnpy/include
@@ -91,12 +69,7 @@ target_link_libraries(searchUSearchIndex_server PRIVATE
     Boost::url
     usearch::usearch
     OpenMP::OpenMP_CXX
-    OpenCV::core
-    OpenCV::features
-    OpenCV::imgcodecs
-    OpenCV::calib
-    OpenSSL::SSL
-    OpenSSL::Crypto
+    ${OpenCV_LIBS}
     CURL::libcurl
 )
 target_compile_options(searchUSearchIndex_server PRIVATE -Wno-unknown-pragmas)

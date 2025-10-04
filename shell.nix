@@ -9,9 +9,9 @@ pkgs.mkShell {
     # Build system
     cmake
 
-    # Library
+    # Libraries
     boost
-    liburing
     opencv
+    curl
   ];
 }

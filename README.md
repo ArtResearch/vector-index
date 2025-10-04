@@ -21,30 +21,15 @@ git subtree add --prefix=metadata/third_party/usearch https://github.com/unum-cl
 
 ## To add submodule
 ```bash    
-git submodule add https://github.com/unum-cloud/usearch.git metadata/third_party/usearch
-cd metadata/third_party/usearch
-git checkout fd6279af6bc205baab1e0ad48651cc0f875cdb7d
-cd ../../../
-git add metadata/third_party/usearch  
-git commit -m "Add usearch submodule at commit fd6279af"  
-git submodule update --init --recursive
+git submodule add https://github.com/unum-cloud/usearch.git third_party/usearch && cd third_party/usearch && git checkout fd6279af6bc205baab1e0ad48651cc0f875cdb7d && cd ../../ && git add third_party/usearch && git commit -m "Add usearch submodule at commit fd6279af" && git submodule update --init --recursive
 ```
   
 ```bash    
-git submodule add https://github.com/ashtum/lazycsv.git metadata/third_party/lazycsv
-cd metadata/third_party/lazycsv
-git checkout 749e7f7218964fe2b9038f73313df7d9366e946b
-cd ../../../
-git add metadata/third_party/lazycsv  
-git commit -m "Add lazycsv submodule at commit 749e7f72"
+git submodule add https://github.com/aindlq/lazycsv.git third_party/lazycsv && cd third_party/lazycsv && git checkout 749e7f7218964fe2b9038f73313df7d9366e946b && cd ../../ && git add third_party/lazycsv && git commit -m "Add lazycsv submodule at commit 749e7f72"
 ```
 
 ```bash    
-git submodule add https://github.com/llohse/libnpy.git metadata/third_party/libnpy
-git checkout 471fe480d5f1082fd8fd0e746eaf10084a2fb82b  
-cd ../../../
-git add metadata/third_party/libnpy
-git commit -m "Add libnpy submodule at commit 471fe480"
+git submodule add https://github.com/llohse/libnpy.git third_party/libnpy && git checkout 471fe480d5f1082fd8fd0e746eaf10084a2fb82b && cd ../../ && git add third_party/libnpy && git commit -m "Add libnpy submodule at commit 471fe480"
 ```
 
 
