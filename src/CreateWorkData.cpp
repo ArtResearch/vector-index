@@ -72,12 +72,28 @@ int main(int argc, char* argv[]) {
         // Set the number of threads for OpenMP
         omp_set_num_threads(max_cpu_threads);
 
-        // Read the initial list of URIs
+        // Read the initial list of URIs and other data
         lazycsv::parser<lazycsv::mmap_source, lazycsv::has_header<true>> works_parser(works_csv_path);
-        int subject_idx = works_parser.index_of("subject");
+        auto header = works_parser.header();
+        std::vector<std::string> output_header;
+        int num_columns = 0;
+        for(const auto& h : header) {
+            output_header.push_back(h.unescaped());
+            num_columns++;
+        }
+        output_header.push_back("text");
+
+        int subject_idx = works_parser.index_of("uri");
         std::vector<std::string> uris;
+        std::vector<std::vector<std::string>> work_rows_data;
         for (const auto& row : works_parser) {
             uris.push_back(row.cells(subject_idx)[0].unescaped());
+            std::vector<std::string> row_data;
+            row_data.reserve(num_columns);
+            for(const auto& cell : row) {
+                row_data.push_back(cell.unescaped());
+            }
+            work_rows_data.push_back(row_data);
         }
         
         // Use a map for efficient lookups and aggregation
@@ -165,17 +181,36 @@ int main(int argc, char* argv[]) {
 
         // Write the aggregated data to the output CSV
         std::ofstream output_file(output_csv_path);
-        output_file << "uri,text\n";
+        
+        std::string header_line;
+        for(size_t i = 0; i < output_header.size(); ++i) {
+            append_escaped(header_line, output_header[i]);
+            if (i < output_header.size() - 1) {
+                header_line += ',';
+            }
+        }
+        header_line += '\n';
+        output_file << header_line;
+
         std::string buffer;
         constexpr size_t buffer_size = 64 * 1024; // 64KB buffer
         buffer.reserve(buffer_size);
         std::string line;
-        for (const auto& uri : uris) {
+
+        for (size_t i = 0; i < work_rows_data.size(); ++i) {
             line.clear();
-            const std::string& text = uri_to_text.at(uri);
-            line.reserve(uri.length() + text.length() + 10);
-            append_escaped(line, uri);
+            const auto& row_data = work_rows_data[i];
+            const auto& uri = uris[i];
+
+            for(size_t j = 0; j < row_data.size(); ++j) {
+                append_escaped(line, row_data[j]);
+                if (j < row_data.size() - 1) {
+                    line += ',';
+                }
+            }
+
             line += ',';
+            const std::string& text = uri_to_text.at(uri);
             append_escaped(line, text);
             line += '\n';
             

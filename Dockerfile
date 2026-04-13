@@ -11,7 +11,7 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends \
       wget ca-certificates bzip2 cmake make libssl-dev libcurl4-openssl-dev \
       git pkg-config libjpeg-dev libpng-dev libtiff-dev \
-      libwebp-dev libopenexr-dev && \
+      libwebp-dev libopenexr-dev libjemalloc-dev && \
     rm -rf /var/lib/apt/lists/*
 
 # Build and install OpenCV from source
@@ -62,26 +62,28 @@ COPY . /src
 RUN mkdir -p /out && \
     cmake -S . -B build -DCMAKE_BUILD_TYPE=Release && \
     cmake --build build -j"$(nproc)" && \
-    install -D -m 0755 build/searchUSearchIndex_server /out/search_usearch_server
+    install -D -m 0755 build/usearchIndex /out/usearchIndex
 
 # Runtime image
 FROM gcc:15-bookworm AS runtime
 
 # Minimal runtime deps and CA roots
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends ca-certificates libstdc++6 libgomp1 && \
+    apt-get install -y --no-install-recommends ca-certificates libstdc++6 libgomp1 libcurl4 libjemalloc2 && \
     rm -rf /var/lib/apt/lists/*
 
 # Copy binary and required shared libraries
-COPY --from=builder /out/search_usearch_server /usr/local/bin/search_usearch_server
+COPY --from=builder /out/usearchIndex /usr/local/bin/usearchIndex
 COPY --from=builder /usr/local/lib/libboost_program_options*.so* /usr/local/lib/
 COPY --from=builder /usr/local/lib/libboost_system*.so* /usr/local/lib/
 COPY --from=builder /usr/local/lib/libboost_url*.so* /usr/local/lib/
 COPY --from=builder /usr/local/lib/libopencv_*.so* /usr/local/lib/
 
 ENV LD_LIBRARY_PATH=/usr/local/lib
+# Ensure jemalloc overrides glibc malloc globally
+ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2
 EXPOSE 8545
 
 # Default entrypoint. docker-compose can pass -i/-m/-p/-e as command args.
-ENTRYPOINT ["search_usearch_server"]
+ENTRYPOINT ["usearchIndex"]
 CMD ["--help"]

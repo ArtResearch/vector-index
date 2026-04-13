@@ -4,6 +4,9 @@
 #include <stdexcept>
 #include <fstream>
 #include <numeric>
+#include <sstream>
+#include <map>
+#include <algorithm>
 
 #include <boost/program_options.hpp>
 #include "npy.hpp"
@@ -17,15 +20,63 @@ void merge_csv_files(const std::vector<std::string>& input_paths, const std::str
         throw std::runtime_error("Failed to open output CSV file: " + output_path);
     }
 
-    bool header_written = false;
+    if (input_paths.empty()) {
+        return;
+    }
+
+    lazycsv::parser<lazycsv::mmap_source, lazycsv::has_header<true>> first_parser(input_paths[0]);
+    std::vector<std::string> canonical_header;
+    std::stringstream header_ss;
+    bool first_col = true;
+    for (const auto& cell : first_parser.header()) {
+        canonical_header.push_back(std::string(cell.trimmed()));
+        if (!first_col) {
+            header_ss << ",";
+        }
+        // NOTE: We are quoting every cell. This assumes that the original data
+        // does not contain quotes within the cells themselves.
+        header_ss << "\"" << cell.raw() << "\"";
+        first_col = false;
+    }
+    output_file << header_ss.str() << "\n";
+
     for (const auto& input_path : input_paths) {
         lazycsv::parser<lazycsv::mmap_source, lazycsv::has_header<true>> parser(input_path);
-        if (!header_written) {
-            output_file << parser.header().raw() << "\n";
-            header_written = true;
+
+        std::vector<std::string> current_header;
+        for (const auto& cell : parser.header()) {
+            current_header.push_back(std::string(cell.trimmed()));
         }
+
+        if (current_header.size() != canonical_header.size()) {
+            throw std::runtime_error("CSV files have different number of columns: " + input_path);
+        }
+
+        std::vector<int> column_mapping(canonical_header.size());
+        for (size_t j = 0; j < canonical_header.size(); ++j) {
+            auto it = std::find(current_header.begin(), current_header.end(), canonical_header[j]);
+            if (it == current_header.end()) {
+                throw std::runtime_error("Column '" + canonical_header[j] + "' not found in file: " + input_path);
+            }
+            column_mapping[j] = std::distance(current_header.begin(), it);
+        }
+
         for (const auto& row : parser) {
-            output_file << row.raw() << "\n";
+            std::vector<std::string_view> cells;
+            for(const auto& cell : row) {
+                cells.push_back(cell.raw());
+            }
+
+            std::stringstream reordered_row_ss;
+            for (size_t j = 0; j < column_mapping.size(); ++j) {
+                // NOTE: We are quoting every cell. This assumes that the original data
+                // does not contain quotes within the cells themselves.
+                reordered_row_ss << "\"" << cells[column_mapping[j]] << "\"";
+                if (j < column_mapping.size() - 1) {
+                    reordered_row_ss << ",";
+                }
+            }
+            output_file << reordered_row_ss.str() << "\n";
         }
     }
 }
